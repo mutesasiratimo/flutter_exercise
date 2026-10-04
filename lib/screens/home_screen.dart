@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_fund/models/contribution.dart';
 import 'package:flutter_fund/models/goal.dart';
-import 'package:flutter_fund/screens/goal_details_screen.dart';
 import 'package:flutter_fund/screens/new_goal_screen.dart';
-import 'package:flutter_fund/utils/format.dart';
+import 'package:flutter_fund/utils/money.dart';
+import 'package:flutter_fund/widgets/goal_card.dart';
+import 'package:provider/provider.dart';
+
+import '../providers/theme_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,120 +16,110 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int totalSavedAcross = 0;
   List<Goal> savingsGoals = [
     Goal(
       goalName: 'New phone',
-      targetAmount: 100000,
-      savedAmount: 0,
+      targetAmount: const Money(100000, Currency.ugx),
+      savedAmount: const Money.zero(Currency.ugx),
       contributions: [],
     ),
     Goal(
       goalName: 'Vacation',
-      targetAmount: 100000,
-      savedAmount: 0,
+      targetAmount: const Money(100000, Currency.ugx),
+      savedAmount: const Money.zero(Currency.ugx),
       contributions: [],
     ),
     Goal(
       goalName: 'Car',
-      targetAmount: 4000000,
-      savedAmount: 0,
+      targetAmount: const Money(4000000, Currency.ugx),
+      savedAmount: const Money.zero(Currency.ugx),
       contributions: [],
     ),
     Goal(
       goalName: 'Laptop',
-      targetAmount: 100000,
-      savedAmount: 0,
+      targetAmount: const Money(100000, Currency.ugx),
+      savedAmount: const Money.zero(Currency.ugx),
       contributions: [],
     ),
     Goal(
       goalName: 'Rainy Day',
-      targetAmount: 500000,
-      savedAmount: 0,
+      targetAmount: const Money(500000, Currency.ugx),
+      savedAmount: const Money.zero(Currency.ugx),
       contributions: [],
     ),
   ];
 
-  void _addSavingsGoal(int index) {
+  String get _totalSavedText {
+    final totals = <Currency, Money>{};
+    for (final goal in savingsGoals) {
+      final current = totals[goal.currency] ?? Money.zero(goal.currency);
+      totals[goal.currency] = current + goal.savedAmount;
+    }
+    return totals.values.map((total) => total.format()).join(' · ');
+  }
+
+  void _addContribution(int index, Money contributionAmount) {
     setState(() {
-      var goal = savingsGoals[index];
-      final target = goal.targetAmount;
-      final saved = (goal.savedAmount) + 10000;
+      final goal = savingsGoals[index];
+      final remaining = goal.targetAmount - goal.savedAmount;
+      final toAdd =
+          contributionAmount > remaining ? remaining : contributionAmount;
 
       savingsGoals[index] = goal.copyWith(
-        savedAmount: saved > target ? target : saved,
+        savedAmount: goal.savedAmount + toAdd,
+        contributions: [
+          ...goal.contributions,
+          Contribution(amount: toAdd, date: DateTime.now()),
+        ],
       );
     });
-
-    _computeTotalSavedAcrossAllGoals();
   }
 
-  void _computeTotalSavedAcrossAllGoals() {
-    totalSavedAcross = 0;
-    for (Goal i in savingsGoals) {
-      totalSavedAcross += i.savedAmount;
-    }
-  }
-
-  void _createNewGoal(Goal goal) {
-    debugPrint(goal.goalName);
+  Future<void> _createNewGoal() async {
+    final newGoal = await Navigator.push<Goal>(
+      context,
+      MaterialPageRoute(builder: (context) => const NewGoalScreen()),
+    );
+    if (!mounted || newGoal == null) return;
     setState(() {
-      savingsGoals.add(goal);
+      savingsGoals.insert(0, newGoal);
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Flutter Fund'), centerTitle: true),
-      body: Column(
+      appBar: AppBar(title: const Text('FlutterFund'), centerTitle: true, actions: [IconButton(onPressed: () => context.read<ThemeProvider>().toggleTheme(), icon: const Icon(Icons.dark_mode))],),
+      body: savingsGoals.isEmpty ?  Center(
+              child: GestureDetector(onTap: _createNewGoal, child:  Row(mainAxisAlignment: MainAxisAlignment.center,children: [Icon(Icons.add), Text('Create your first goal')],),
+              ),
+              ) : Column(
         children: [
-          Text(
-            'Total Amount Saved: UGX ${AppFunctions.numberFormat(totalSavedAcross)}',
-          ),
+          Text('Total Amount Saved: $_totalSavedText'),
           Expanded(
-            child: ListView.builder(
+            child: ReorderableListView.builder(
               itemCount: savingsGoals.length,
+              onReorder: (oldIndex, newIndex) {
+                setState(() {
+                  final goal = savingsGoals.removeAt(oldIndex);
+                  savingsGoals.insert(newIndex, goal);
+                });
+              },
               itemBuilder: (context, index) {
-                var goal = savingsGoals[index];
-                num savedAmount = double.parse(goal.savedAmount.toString());
-                num targetAmount = double.parse(goal.targetAmount.toString());
-                double progress = savedAmount / targetAmount;
-                return Card(
-                  child: ListTile(
-                    title: Text(goal.goalName),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'UGX ${AppFunctions.numberFormat(goal.savedAmount)} of UGX ${AppFunctions.numberFormat(goal.targetAmount)} (${(progress * 100).toStringAsFixed(0)}%)',
-                          style: TextStyle(),
-                        ),
-                        LinearProgressIndicator(
-                          value: progress,
-                          semanticsLabel: 'Progress: $progress',
-                        ),
-                      ],
-                    ),
-                    trailing: ElevatedButton.icon(
-                      onPressed: () =>
-                          progress < 1 ? _addSavingsGoal(index) : null,
-                      label: Text(
-                        progress < 1
-                            ? 'Add ${AppFunctions.numberFormat(10000)}'
-                            : 'Completed',
-                      ),
-                      icon: progress < 1
-                          ? Icon(Icons.add)
-                          : Icon(Icons.check_circle),
-                    ),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (context) => GoalDetailsScreen(goal: goal),
-                      ),
-                    ),
-                  ),
+                final goal = savingsGoals[index];
+                return Dismissible(
+                  onDismissed: (direction) {
+                    setState(() {
+                      savingsGoals.removeAt(index);
+                    });
+                  },
+                  background: Container(color: Colors.red, child: const Icon(Icons.delete),),
+                  key: Key(goal.goalName), 
+                  child: GoalCard(
+                  goal: goal,
+                  onAddContribution: (amount) =>
+                      _addContribution(index, amount),
+                ),
                 );
               },
             ),
@@ -133,15 +127,12 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       floatingActionButton: IconButton(
-        icon: Icon(Icons.add),
+        icon: const Icon(Icons.add),
         style: IconButton.styleFrom(
           backgroundColor: Colors.green,
           foregroundColor: Colors.white,
         ),
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute<void>(builder: (context) => NewGoalScreen()),
-        ),
+        onPressed: _createNewGoal,
       ),
     );
   }
