@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_fund/models/goal.dart';
-import 'package:flutter_fund/screens/goal_details_screen.dart';
 import 'package:flutter_fund/utils/money.dart';
 
 class GoalCard extends StatelessWidget {
   final Goal goal;
   final ValueChanged<Money> onAddContribution;
+  final VoidCallback? onTap;
+  final bool selected;
 
   const GoalCard({
     super.key,
     required this.goal,
     required this.onAddContribution,
+    this.onTap,
+    this.selected = false,
   });
 
   @override
@@ -19,6 +22,7 @@ class GoalCard extends StatelessWidget {
 
     return Card(
       child: ListTile(
+        selected: selected,
         title: Text(goal.goalName),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -39,17 +43,7 @@ class GoalCard extends StatelessWidget {
           ),
           icon: Icon(goal.isCompleted ? Icons.check_circle : Icons.add),
         ),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute<void>(
-              builder: (context) => GoalDetailsScreen(
-                goal: goal,
-                onAddContribution: onAddContribution,
-              ),
-            ),
-          );
-        },
+        onTap: onTap,
       ),
     );
   }

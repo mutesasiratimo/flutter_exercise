@@ -1,14 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'api/api_client.dart';
+import 'api/token_storage.dart';
 import 'design_system/app_colors.dart';
+import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
-import 'screens/home_screen.dart';
+import 'screens/auth_gate.dart';
+import 'utils/constants.dart';
 
 void main() {
+  final apiClient = ApiClient(
+    baseUrl: Constants.baseUrl,
+    tokenStorage: SharedPrefsTokenStorage(),
+  );
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
+        Provider<ApiClient>.value(value: apiClient),
+        ChangeNotifierProvider(
+          create: (context) => AuthProvider(apiClient)..restoreSession(),
+        ),
       ],
       child: const MyApp()));
 }
@@ -37,7 +50,7 @@ class MyApp extends StatelessWidget {
       themeMode: context.watch<ThemeProvider>().isDarkMode
           ? ThemeMode.dark
           : ThemeMode.light,
-      home: const HomeScreen(),
+      home: const AuthGate(),
     );
   }
 }

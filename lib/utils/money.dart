@@ -1,6 +1,5 @@
 import 'dart:math';
-
-import 'package:flutter_fund/utils/format.dart';
+import 'app_functions.dart';
 
 enum Currency {
   ugx(decimals: 0),

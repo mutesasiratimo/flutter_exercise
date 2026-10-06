@@ -94,6 +94,39 @@ void main() {
       expect(find.text('Total Amount Saved: UGX 100,000'), findsOneWidget);
     });
 
+    testWidgets('swiping a goal deletes it and UNDO brings it back',
+        (tester) async {
+      await pumpHomeScreen(tester);
+
+      await tester.drag(find.text('Car'), const Offset(-800, 0));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Car'), findsNothing);
+      expect(find.text('Goal deleted'), findsOneWidget);
+
+      await tester.tap(find.text('UNDO'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Car'), findsOneWidget);
+    });
+
+    testWidgets('deleting every goal shows the empty state', (tester) async {
+      await pumpHomeScreen(tester);
+
+      for (final name in [
+        'New phone',
+        'Vacation',
+        'Car',
+        'Laptop',
+        'Rainy Day',
+      ]) {
+        await tester.drag(find.text(name), const Offset(-800, 0));
+        await tester.pumpAndSettle();
+      }
+
+      expect(find.text('Create your first goal'), findsOneWidget);
+    });
+
     testWidgets('tapping a goal opens its details screen', (tester) async {
       await pumpHomeScreen(tester);
 
@@ -102,6 +135,28 @@ void main() {
 
       expect(find.byType(GoalDetailsScreen), findsOneWidget);
       expect(find.text('Goal Details'), findsOneWidget);
+    });
+
+    testWidgets('on a wide screen tapping a goal shows it in the side pane',
+        (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await pumpHomeScreen(tester);
+      expect(find.text('Select a goal to see its details'), findsOneWidget);
+
+      await tester.tap(find.text('Car'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('FlutterFund'), findsOneWidget);
+      expect(find.text('UGX 0 of UGX 4,000,000'), findsOneWidget);
+
+      await tester.tap(find.text('Rainy Day'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('UGX 0 of UGX 4,000,000'), findsNothing);
+      expect(find.text('UGX 0 of UGX 500,000'), findsOneWidget);
     });
 
     testWidgets('tapping the add button opens the new goal screen',

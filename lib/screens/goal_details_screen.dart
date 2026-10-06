@@ -33,6 +33,14 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     goal = widget.goal;
   }
 
+  @override
+  void didUpdateWidget(covariant GoalDetailsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(widget.goal, oldWidget.goal)) {
+      goal = widget.goal;
+    }
+  }
+
   Money get _remaining => goal.targetAmount - goal.savedAmount;
 
   String get _deadlineStatus {
